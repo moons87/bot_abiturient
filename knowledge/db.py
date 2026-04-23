@@ -11,7 +11,7 @@ async def init_db():
                 source TEXT NOT NULL,
                 section TEXT NOT NULL,
                 content TEXT NOT NULL,
-                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)
         await db.execute("""
@@ -134,10 +134,13 @@ async def register_for_excursion(
 ):
     async with aiosqlite.connect(DB_PATH) as db:
         db.row_factory = aiosqlite.Row
+        await db.execute("BEGIN IMMEDIATE")
         async with db.execute(
             "SELECT max_slots, current_slots FROM excursion_dates WHERE id = ?", (date_id,)
         ) as cursor:
             row = await cursor.fetchone()
+        if row is None:
+            raise ValueError("excursion date not found")
         if row["current_slots"] >= row["max_slots"]:
             raise ValueError("no slots available")
         await db.execute(
@@ -168,12 +171,14 @@ async def get_excursion_registrations(date_id: int) -> list[dict]:
 
 async def get_stats() -> dict:
     async with aiosqlite.connect(DB_PATH) as db:
+        await db.execute("BEGIN DEFERRED")
         async with db.execute("SELECT COUNT(*) FROM knowledge_base") as c:
             knowledge_count = (await c.fetchone())[0]
         async with db.execute("SELECT COUNT(*) FROM faq") as c:
             faq_count = (await c.fetchone())[0]
         async with db.execute("SELECT COUNT(*) FROM excursion_requests") as c:
             requests_count = (await c.fetchone())[0]
+        await db.execute("ROLLBACK")
     return {
         "knowledge_count": knowledge_count,
         "faq_count": faq_count,

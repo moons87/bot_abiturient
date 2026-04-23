@@ -68,3 +68,32 @@ async def test_get_stats():
     assert stats["knowledge_count"] == 1
     assert stats["faq_count"] == 1
     assert stats["requests_count"] == 0
+
+async def test_get_excursion_date_by_id():
+    await add_excursion_date("2026-06-01", "09:00", "экскурсия", 5)
+    dates = await get_active_excursion_dates()
+    fetched = await get_excursion_date_by_id(dates[0]["id"])
+    assert fetched is not None
+    assert fetched["max_slots"] == 5
+
+async def test_get_excursion_date_by_id_not_found():
+    result = await get_excursion_date_by_id(9999)
+    assert result is None
+
+async def test_get_excursion_registrations():
+    await add_excursion_date("2026-06-01", "09:00", "экскурсия", 5)
+    date_id = (await get_active_excursion_dates())[0]["id"]
+    await register_for_excursion(date_id, "Алия", "+77001234567", 999)
+    regs = await get_excursion_registrations(date_id)
+    assert len(regs) == 1
+    assert regs[0]["name"] == "Алия"
+
+async def test_register_raises_for_nonexistent_date():
+    with pytest.raises(ValueError, match="not found"):
+        await register_for_excursion(9999, "Тест", "+70000000000", 1)
+
+async def test_get_all_knowledge():
+    await add_knowledge("site", "общее", "текст 1")
+    await add_knowledge("file.pdf", "гранты", "текст 2")
+    all_rows = await get_all_knowledge()
+    assert len(all_rows) == 2

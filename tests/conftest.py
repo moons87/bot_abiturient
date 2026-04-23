@@ -1,13 +1,9 @@
 import pytest
-import os
 from knowledge.db import init_db
 
-TEST_DB = "test_database.db"
-
 @pytest.fixture(autouse=True)
-async def test_db(monkeypatch):
-    monkeypatch.setattr("knowledge.db.DB_PATH", TEST_DB)
+async def test_db(monkeypatch, tmp_path):
+    db_path = str(tmp_path / "test.db")
+    monkeypatch.setattr("knowledge.db.DB_PATH", db_path)
     await init_db()
     yield
-    if os.path.exists(TEST_DB):
-        os.remove(TEST_DB)
