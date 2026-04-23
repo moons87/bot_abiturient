@@ -1,8 +1,12 @@
 # scraper/site_parser.py
+import asyncio
+import logging
 import requests
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin, urlparse
 from knowledge.db import add_knowledge, clear_knowledge_by_source
+
+logger = logging.getLogger(__name__)
 
 GRANT_KEYWORDS = ["грант", "стипендия", "финансирование", "льгота", "скидка"]
 DORM_KEYWORDS = ["общежитие", "проживание", "комната", "жильё"]
@@ -40,25 +44,36 @@ def get_internal_links(base_url: str, html: str) -> list[str]:
             links.add(href.split("#")[0])
     return list(links)
 
+def _fetch(session: requests.Session, url: str) -> requests.Response:
+    return session.get(url, timeout=10)
+
 async def parse_site(base_url: str, max_pages: int = 50):
     await clear_knowledge_by_source("site")
     visited: set[str] = set()
+    queued: set[str] = {base_url}
     to_visit = [base_url]
-    session = requests.Session()
-    session.headers["User-Agent"] = "Mozilla/5.0 (compatible; CollegeBot/1.0)"
+    loop = asyncio.get_event_loop()
 
-    while to_visit and len(visited) < max_pages:
-        url = to_visit.pop(0)
-        if url in visited:
-            continue
-        try:
-            resp = session.get(url, timeout=10)
-            resp.raise_for_status()
-        except Exception:
-            continue
-        visited.add(url)
-        for chunk in extract_text_chunks(resp.text):
-            await add_knowledge("site", categorize_section(chunk), chunk)
-        for link in get_internal_links(base_url, resp.text):
-            if link not in visited:
-                to_visit.append(link)
+    with requests.Session() as session:
+        session.headers["User-Agent"] = "Mozilla/5.0 (compatible; CollegeBot/1.0)"
+
+        while to_visit and len(visited) < max_pages:
+            url = to_visit.pop(0)
+            if url in visited:
+                continue
+            try:
+                resp = await loop.run_in_executor(None, _fetch, session, url)
+                resp.raise_for_status()
+            except requests.RequestException as e:
+                logger.warning("Skipping %s: %s", url, e)
+                continue
+            visited.add(url)
+            for chunk in extract_text_chunks(resp.text):
+                await add_knowledge("site", categorize_section(chunk), chunk)
+            for link in get_internal_links(base_url, resp.text):
+                if link not in visited and link not in queued:
+                    to_visit.append(link)
+                    queued.add(link)
+            logger.info("Scraped %d pages so far", len(visited))
+
+    logger.info("Site parse complete: %d pages scraped", len(visited))

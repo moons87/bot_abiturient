@@ -1,10 +1,14 @@
 # ai/claude_client.py
+import logging
 import os
 import anthropic
 
+logger = logging.getLogger(__name__)
 client = anthropic.AsyncAnthropic(api_key=os.getenv("CLAUDE_API_KEY"))
 
 MODEL = "claude-haiku-4-5-20251001"
+
+FALLBACK_ANSWER = "Не удалось получить ответ. Попробуйте позже или напишите администратору."
 
 async def ask_question(question: str, context: str) -> str:
     if context:
@@ -18,13 +22,17 @@ async def ask_question(question: str, context: str) -> str:
             "Ты консультант колледжа. По данному вопросу информации нет. "
             "Сообщи об этом и предложи написать администратору."
         )
-    response = await client.messages.create(
-        model=MODEL,
-        max_tokens=1024,
-        system=system,
-        messages=[{"role": "user", "content": question}],
-    )
-    return response.content[0].text
+    try:
+        response = await client.messages.create(
+            model=MODEL,
+            max_tokens=1024,
+            system=system,
+            messages=[{"role": "user", "content": question}],
+        )
+        return response.content[0].text
+    except anthropic.APIError as e:
+        logger.error("Claude API error in ask_question: %s", e)
+        return FALLBACK_ANSWER
 
 async def generate_proftest_report(answers: list[dict], specialties: list[str]) -> str:
     answers_text = "\n".join(f"- {a['question']}: {a['answer']}" for a in answers)
@@ -35,9 +43,13 @@ async def generate_proftest_report(answers: list[dict], specialties: list[str]) 
         "Напиши развёрнутый отчёт (300-400 слов): проанализируй интересы и сильные стороны, "
         "порекомендуй 2-3 подходящие специальности с объяснением. Пиши дружелюбно."
     )
-    response = await client.messages.create(
-        model=MODEL,
-        max_tokens=2048,
-        messages=[{"role": "user", "content": prompt}],
-    )
-    return response.content[0].text
+    try:
+        response = await client.messages.create(
+            model=MODEL,
+            max_tokens=2048,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        return response.content[0].text
+    except anthropic.APIError as e:
+        logger.error("Claude API error in generate_proftest_report: %s", e)
+        return FALLBACK_ANSWER

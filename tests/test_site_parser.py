@@ -23,3 +23,16 @@ def test_extract_ignores_nav():
     html = "<html><body><nav>Навигация сайта меню</nav><main><p>Основной текст страницы колледжа</p></main></body></html>"
     chunks = extract_text_chunks(html)
     assert not any("Навигация" in c for c in chunks)
+
+from scraper.site_parser import get_internal_links
+
+def test_get_internal_links_extracts_same_domain():
+    html = '<html><body><a href="/about">About</a><a href="https://other.com/x">External</a></body></html>'
+    links = get_internal_links("https://college.kz", html)
+    assert any("college.kz" in l for l in links)
+    assert not any("other.com" in l for l in links)
+
+def test_get_internal_links_strips_fragments():
+    html = '<html><body><a href="/page#section">Link</a></body></html>'
+    links = get_internal_links("https://college.kz", html)
+    assert all("#" not in l for l in links)
