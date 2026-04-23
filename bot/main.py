@@ -13,6 +13,10 @@ from bot.scheduler import setup_scheduler
 
 async def main():
     await init_db()
+    if not os.getenv("BOT_TOKEN"):
+        raise ValueError("BOT_TOKEN is required")
+    if not os.getenv("ADMIN_TELEGRAM_ID"):
+        print("WARNING: ADMIN_TELEGRAM_ID не задан — команды администратора отключены")
     bot = Bot(token=os.getenv("BOT_TOKEN"))
     dp = Dispatcher(storage=MemoryStorage())
 

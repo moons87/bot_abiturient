@@ -53,6 +53,10 @@ async def proftest_answer(callback: CallbackQuery, state: FSMContext):
     parts = callback.data.split(":")
     q_idx, chosen_key = int(parts[1]), parts[2]
     data = await state.get_data()
+    current = data["current"]
+    if q_idx != current or q_idx >= len(QUESTIONS):
+        await callback.answer()
+        return
     answers = data["answers"]
     q = QUESTIONS[q_idx]
     answers.append({"question": q["text"], "answer": q["options"][chosen_key]})
@@ -60,7 +64,10 @@ async def proftest_answer(callback: CallbackQuery, state: FSMContext):
     if next_idx >= len(QUESTIONS):
         await state.clear()
         await callback.message.edit_text("⏳ Анализирую ваши ответы, подождите 10-20 секунд...")
-        report = await generate_proftest_report(answers, COLLEGE_SPECIALTIES)
+        try:
+            report = await generate_proftest_report(answers, COLLEGE_SPECIALTIES)
+        except Exception:
+            report = "Не удалось сформировать отчёт. Попробуйте позже или напишите администратору."
         await callback.message.edit_text(
             f"🎯 Ваш профориентационный отчёт:\n\n{report}",
             reply_markup=main_menu_keyboard(),

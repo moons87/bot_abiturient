@@ -9,6 +9,8 @@ router = Router()
 
 @router.message()
 async def free_text_handler(message: Message):
+    if not message.text:
+        return
     await message.answer("⏳ Ищу ответ...")
     chunks = await find_relevant_chunks(message.text)
     context = "\n\n".join(chunks)

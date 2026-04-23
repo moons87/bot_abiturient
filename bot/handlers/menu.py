@@ -2,6 +2,7 @@
 from aiogram import Router, F
 from aiogram.types import Message, CallbackQuery
 from aiogram.filters import CommandStart
+from aiogram.fsm.context import FSMContext
 from bot.keyboards import main_menu_keyboard, back_to_menu_keyboard
 from knowledge.db import get_knowledge_by_section
 
@@ -15,11 +16,13 @@ WELCOME_TEXT = (
 )
 
 @router.message(CommandStart())
-async def start_handler(message: Message):
+async def start_handler(message: Message, state: FSMContext):
+    await state.clear()
     await message.answer(WELCOME_TEXT, reply_markup=main_menu_keyboard())
 
 @router.callback_query(F.data == "menu:main")
-async def back_to_menu(callback: CallbackQuery):
+async def back_to_menu(callback: CallbackQuery, state: FSMContext):
+    await state.clear()
     await callback.message.edit_text(WELCOME_TEXT, reply_markup=main_menu_keyboard())
 
 @router.callback_query(F.data.startswith("section:"))

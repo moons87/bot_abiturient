@@ -47,12 +47,18 @@ async def excursion_choose_date(callback: CallbackQuery, state: FSMContext):
 
 @router.message(ExcursionStates.entering_name)
 async def excursion_enter_name(message: Message, state: FSMContext):
+    if not message.text:
+        await message.answer("Пожалуйста, введите текстом ваше ФИО:")
+        return
     await state.update_data(name=message.text)
     await state.set_state(ExcursionStates.entering_phone)
     await message.answer("Введите ваш номер телефона:")
 
 @router.message(ExcursionStates.entering_phone)
 async def excursion_enter_phone(message: Message, state: FSMContext, bot: Bot):
+    if not message.text:
+        await message.answer("Пожалуйста, введите номер телефона текстом:")
+        return
     data = await state.get_data()
     await state.clear()
     try:
