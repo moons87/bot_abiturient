@@ -8,9 +8,18 @@ from knowledge.db import add_knowledge, clear_knowledge_by_source
 
 logger = logging.getLogger(__name__)
 
-GRANT_KEYWORDS = ["грант", "стипендия", "финансирование", "льгота", "скидка"]
-DORM_KEYWORDS = ["общежитие", "проживание", "комната", "жильё"]
-SPEC_KEYWORDS = ["специальность", "направление", "программа", "обучение", "квалификация"]
+GRANT_KEYWORDS = [
+    "грант", "стипендия", "финансирование", "льгота", "скидка",
+    "шәкіртақы", "грантты",  # казахский
+]
+DORM_KEYWORDS = [
+    "общежитие", "проживание", "комната", "жильё",
+    "жатақхана",  # казахский
+]
+SPEC_KEYWORDS = [
+    "специальность", "направление", "программа", "обучение", "квалификация",
+    "мамандық", "мамандықтар", "біздің мамандықтар",  # казахский
+]
 
 def categorize_section(text: str) -> str:
     t = text.lower()
@@ -47,7 +56,7 @@ def get_internal_links(base_url: str, html: str) -> list[str]:
 def _fetch(session: requests.Session, url: str) -> requests.Response:
     return session.get(url, timeout=10)
 
-async def parse_site(base_url: str, max_pages: int = 50):
+async def parse_site(base_url: str, max_pages: int = 200):
     await clear_knowledge_by_source("site")
     visited: set[str] = set()
     queued: set[str] = {base_url}
